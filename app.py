@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-openai_api_key = os.getenv("OPENAI_API_KEY")
+openai_api_key = os.getenv("OPENAI_KEY")
 
 # Sample values for dropdowns
 urgency_levels = ['1', '2', '3']
@@ -41,32 +41,59 @@ A patient arrived at the ER with the following conditions:
 - Facility Size: {inputs['Facility Size (Beds)']}
 The predicted wait time is {int(predicted_time)} minutes.
 
-In **3 sentences**, explain the likely reason for the wait in simple, kind, and empathetic language. Be brief and reassuring.
+In **3 sentences**, explain the likely reason for the wait in simple, kind, and empathetic language. 
+Be brief and reassuring and do not use boilerplate language.
+Do not say exactly the numbers of Facility Sizes, Nurse-to-Patient Ratio and Specialist Availability, but you can describe them.
 """
-
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a hospital assistant. Your job is to explain ER wait times in an empathetic and simple way."},
             {"role": "user", "content": prompt}
         ]
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content, prompt
 
 # UI layout
 st.title("⏱️ WaitWise: ER Wait Time Predictor + GenAI Explanation")
 st.markdown("Use patient and facility details to estimate ER wait time and receive a short, empathetic explanation.")
 
+
+# Randomization function
+def randomize_inputs():
+    return {
+        "Region": np.random.choice(regions),
+        "Day of Week": np.random.choice(days_of_week),
+        "Season": np.random.choice(seasons),
+        "Time of Day": np.random.choice(time_of_day),
+        "Urgency Level": np.random.choice(urgency_levels),
+        "Nurse-to-Patient Ratio": np.random.randint(1, 11),
+        "Specialist Availability": np.random.randint(0, 11),
+        "Facility Size (Beds)": np.random.randint(10, 151)
+    }
+
+# Initialize session state for random values
+if "random_inputs" not in st.session_state:
+    st.session_state.random_inputs = randomize_inputs()
+
 # Sidebar inputs
 st.sidebar.header("Patient Visit Information")
-region = st.sidebar.selectbox("Region", regions)
-day_of_week = st.sidebar.selectbox("Day of Week", days_of_week)
-season = st.sidebar.selectbox("Season", seasons)
-time_day = st.sidebar.selectbox("Time of Day", time_of_day)
-urgency = st.sidebar.selectbox("Urgency Level", urgency_levels)
-nurse_ratio = st.sidebar.slider("Nurse-to-Patient Ratio", 1, 10, 4)
-specialists = st.sidebar.slider("Specialist Availability", 0, 10, 3)
-beds = st.sidebar.slider("Facility Size (Beds)", 10, 150, 75)
+
+# Button to randomize inputs
+if st.sidebar.button("🎲 Randomize Inputs"):
+    st.session_state.random_inputs = randomize_inputs()
+
+
+# Sidebar widgets using session state
+region = st.sidebar.selectbox("Region", regions, index=regions.index(st.session_state.random_inputs["Region"]))
+day_of_week = st.sidebar.selectbox("Day of Week", days_of_week, index=days_of_week.index(st.session_state.random_inputs["Day of Week"]))
+season = st.sidebar.selectbox("Season", seasons, index=seasons.index(st.session_state.random_inputs["Season"]))
+time_day = st.sidebar.selectbox("Time of Day", time_of_day, index=time_of_day.index(st.session_state.random_inputs["Time of Day"]))
+urgency = st.sidebar.selectbox("Urgency Level (1=Lowest)", urgency_levels, index=urgency_levels.index(st.session_state.random_inputs["Urgency Level"]))
+nurse_ratio = st.sidebar.slider("Nurse-to-Patient Ratio", 1, 10, st.session_state.random_inputs["Nurse-to-Patient Ratio"])
+specialists = st.sidebar.slider("Specialist Availability", 0, 10, st.session_state.random_inputs["Specialist Availability"])
+beds = st.sidebar.slider("Facility Size (Beds)", 10, 150, st.session_state.random_inputs["Facility Size (Beds)"])
+
 
 # Prepare input
 input_data = pd.DataFrame([{
@@ -82,13 +109,18 @@ input_data = pd.DataFrame([{
 
 # Predict button
 if st.button("🔍 Predict Wait Time"):
+    
     model = load_model()
     predicted_wait_time = model.predict(input_data)[0]
 
     st.success(f"🕒 Predicted Wait Time: **{int(predicted_wait_time)} minutes**")
 
     with st.spinner("Generating explanation..."):
-        explanation_text = generate_genai_explanation(input_data.iloc[0], predicted_wait_time)
+        explanation_text, used_prompt = generate_genai_explanation(input_data.iloc[0], predicted_wait_time)
 
     st.markdown("### 🧠 Explanation")
     st.info(explanation_text)
+
+    with st.expander("🔍 Show Prompt Used for Explanation"):
+        st.success(used_prompt.strip())
+

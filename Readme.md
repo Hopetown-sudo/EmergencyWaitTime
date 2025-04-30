@@ -16,10 +16,11 @@ WaitWise is an interactive Streamlit-based web app that predicts Emergency Room 
 ## 📁 Project Structure
 
 ```
-Emegergencywaittime/
+EmergencyWaitTime/
 ├── app.py                 # Streamlit frontend app
-├── waitwise_model_pipeline_tuned.joblib  # Trained ML pipeline
+├── waitwise_model_pipeline_tuned.joblib  # Trained ML pipeline tuned for reducing overfitting
 ├── README.md
+├── requirements.txt
 ├── .env                            # Environment variable with OpenAI key
 ```
 
@@ -29,8 +30,9 @@ Emegergencywaittime/
 
 ### 1. Clone this repository
 ```bash
-git clone https://github.com/yourusername/Emegergencywaittime.git
-cd Emegergencywaittime
+git clone https://github.com/yourusername/EmergencyWaitTime.git
+cd EmergencyWaitTime
+
 ```
 
 ### 2. Create and activate virtual environment
